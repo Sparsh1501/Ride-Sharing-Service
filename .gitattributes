@@ -1,0 +1,14 @@
+# Normalize line endings; keep shell scripts and the Gradle wrapper LF so they
+# run correctly on Linux/macOS and inside Docker even when checked out on Windows.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+gradlew text eol=lf
+*.sh text eol=lf
+
+# Treat the wrapper jar and other binaries as binary (no EOL conversion)
+*.jar binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary

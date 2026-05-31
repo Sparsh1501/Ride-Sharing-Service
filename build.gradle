@@ -1,0 +1,94 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.4' apply false
+    id 'io.spring.dependency-management' version '1.1.6' apply false
+}
+
+ext {
+    springBootVersion = '3.3.4'
+    testcontainersVersion = '1.20.2'
+    resilience4jVersion = '2.2.0'
+    springdocVersion = '2.6.0'
+}
+
+allprojects {
+    group = 'com.dispatch'
+    version = '1.0.0'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.compilerArgs += ['-parameters']
+    }
+
+    tasks.withType(Test).configureEach {
+        testLogging {
+            events 'passed', 'skipped', 'failed'
+            exceptionFormat 'full'
+        }
+    }
+
+    // Keep `build` hermetic: the default `test` task skips Docker-backed tests.
+    tasks.named('test', Test) {
+        useJUnitPlatform {
+            excludeTags 'integration'
+        }
+    }
+
+    tasks.register('integrationTest', Test) {
+        description = 'Runs Testcontainers-backed integration tests (requires Docker).'
+        group = 'verification'
+        useJUnitPlatform {
+            includeTags 'integration'
+        }
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+
+        // Strip malformed PATH entries (e.g. ones containing illegal chars) so
+        // Testcontainers' docker-machine probe doesn't blow up during discovery.
+        def rawPath = System.getenv('PATH') ?: System.getenv('Path') ?: ''
+        def cleaned = rawPath.split(java.io.File.pathSeparator)
+                .findAll { it && !it.contains('<') && !it.contains('>') && !it.contains('"') }
+                .join(java.io.File.pathSeparator)
+        environment 'PATH', cleaned
+        environment 'Path', cleaned
+    }
+}
+
+// Shared convention for every Spring Boot microservice under :services
+configure(subprojects.findAll { it.path.startsWith(':services:') }) {
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
+        }
+    }
+
+    dependencies {
+        implementation project(':shared:common')
+        implementation project(':shared:kafka-events')
+
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+
+        implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+}

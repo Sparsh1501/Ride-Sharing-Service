@@ -1,0 +1,15 @@
+rootProject.name = 'dispatch-engine'
+
+// Shared libraries
+include 'shared:common'
+include 'shared:kafka-events'
+
+// Microservices
+include 'services:api-gateway'
+include 'services:ride-request-service'
+include 'services:dispatch-service'
+include 'services:driver-location-service'
+include 'services:trip-service'
+include 'services:surge-pricing-service'
+include 'services:notification-service'
+include 'services:query-service'

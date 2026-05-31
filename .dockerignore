@@ -1,0 +1,22 @@
+# Keep the Docker build context small and reproducible.
+.git
+.gitignore
+.gitattributes
+.idea
+*.iml
+.vscode
+
+# Build outputs (rebuilt inside the image)
+**/build/
+.gradle/
+
+# Frontend (not part of the service images)
+frontend/
+
+# Local env / logs / docs
+.env
+*.log
+README.md
+grafana/
+prometheus.yml
+docker-compose.yml
