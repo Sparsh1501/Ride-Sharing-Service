@@ -71,7 +71,7 @@ tasks.named('test', Test) {
 }
 
 tasks.register('integrationTest', Test) {
-    description = 'Runs Testcontainers-backed integration tests (requires Docker).'
+    description = 'Runs Redis-backed integration tests. Uses REDIS_HOST when set (or in CI); otherwise Testcontainers (Docker required).'
     group = 'verification'
     useJUnitPlatform {
         includeTags 'integration'
@@ -80,15 +80,30 @@ tasks.register('integrationTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
 
     def os = org.gradle.internal.os.OperatingSystem.current()
+    def rawPath = System.getenv('PATH') ?: System.getenv('Path') ?: ''
+    def cleanedPath = rawPath.split(java.io.File.pathSeparator)
+            .findAll { it && !it.contains('<') && !it.contains('>') && !it.contains('"') }
+            .join(java.io.File.pathSeparator)
+
     if (os.isWindows()) {
-        def rawPath = System.getenv('PATH') ?: System.getenv('Path') ?: ''
-        def cleaned = rawPath.split(java.io.File.pathSeparator)
-                .findAll { it && !it.contains('<') && !it.contains('>') && !it.contains('"') }
-                .join(java.io.File.pathSeparator)
-        environment 'PATH', cleaned
-        environment 'Path', cleaned
-    } else if (os.isLinux()) {
-        environment 'DOCKER_HOST', 'unix:///var/run/docker.sock'
-        environment 'TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE', '/var/run/docker.sock'
+        environment 'PATH', cleanedPath
+        environment 'Path', cleanedPath
+    } else if (!cleanedPath.isEmpty()) {
+        environment 'PATH', cleanedPath
+    }
+
+    def dockerSocket = new File('/var/run/docker.sock')
+    if (!dockerSocket.exists()) {
+        dockerSocket = new File(System.getProperty('user.home'), '.docker/run/docker.sock')
+    }
+    if (dockerSocket.exists()) {
+        environment 'DOCKER_HOST', "unix://${dockerSocket.absolutePath}"
+        environment 'TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE', dockerSocket.absolutePath
+    }
+
+    def redisHost = System.getenv('REDIS_HOST')
+    if (redisHost != null && !redisHost.isBlank()) {
+        environment 'REDIS_HOST', redisHost
+        environment 'REDIS_PORT', System.getenv('REDIS_PORT') ?: '6379'
     }
 }

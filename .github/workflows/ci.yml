@@ -13,6 +13,19 @@ jobs:
   test:
     name: Tests
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,16 +37,7 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Verify Docker
-        run: |
-          docker version
-          docker info
-          test -S /var/run/docker.sock
-
       - name: Run all tests
-        env:
-          DOCKER_HOST: unix:///var/run/docker.sock
-          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/docker.sock
         run: ./gradlew test integrationTest --no-daemon
 
       - name: Publish test report
