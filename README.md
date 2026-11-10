@@ -117,11 +117,13 @@ dispatch-engine/
 
 ## Prerequisites
 
+> **New to the project?** See **[STARTUP.md](STARTUP.md)** for step-by-step local setup (`scripts/dev-infra.sh`, Docker infra, IntelliJ, and port-5432 workarounds).
+
 - JDK 17 (`java -version` → 17)
 - Docker + Docker Compose
 - Node 18+ (only for the frontend)
 
-> Gradle itself is **not** required — the repo ships a Gradle 8.10.2 wrapper (`gradlew`).
+> Gradle itself is **not** required — the repo ships a Gradle **8.14.6** wrapper (`gradlew`).
 
 ---
 
