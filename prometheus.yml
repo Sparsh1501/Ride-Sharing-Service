@@ -7,11 +7,4 @@ scrape_configs:
     metrics_path: '/actuator/prometheus'
     static_configs:
       - targets:
-          - 'api-gateway:8080'
-          - 'ride-request-service:8081'
-          - 'dispatch-service:8082'
-          - 'driver-location-service:8083'
-          - 'trip-service:8084'
-          - 'surge-pricing-service:8085'
-          - 'notification-service:8086'
-          - 'query-service:8087'
+          - 'dispatch-engine:8080'
