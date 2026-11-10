@@ -79,10 +79,16 @@ tasks.register('integrationTest', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
 
-    def rawPath = System.getenv('PATH') ?: System.getenv('Path') ?: ''
-    def cleaned = rawPath.split(java.io.File.pathSeparator)
-            .findAll { it && !it.contains('<') && !it.contains('>') && !it.contains('"') }
-            .join(java.io.File.pathSeparator)
-    environment 'PATH', cleaned
-    environment 'Path', cleaned
+    def os = org.gradle.internal.os.OperatingSystem.current()
+    if (os.isWindows()) {
+        def rawPath = System.getenv('PATH') ?: System.getenv('Path') ?: ''
+        def cleaned = rawPath.split(java.io.File.pathSeparator)
+                .findAll { it && !it.contains('<') && !it.contains('>') && !it.contains('"') }
+                .join(java.io.File.pathSeparator)
+        environment 'PATH', cleaned
+        environment 'Path', cleaned
+    } else if (os.isLinux()) {
+        environment 'DOCKER_HOST', 'unix:///var/run/docker.sock'
+        environment 'TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE', '/var/run/docker.sock'
+    }
 }

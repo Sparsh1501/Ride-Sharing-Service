@@ -24,18 +24,17 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Run unit tests
-        run: ./gradlew test --no-daemon
+      - name: Verify Docker
+        run: |
+          docker version
+          docker info
+          test -S /var/run/docker.sock
 
-      - name: Run integration tests
+      - name: Run all tests
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
-        run: |
-          # Repo pins Npipe for Windows dev; GitHub Linux runners need the Unix socket strategy.
-          printf '%s\n' \
-            'docker.client.strategy=org.testcontainers.dockerclient.UnixSocketClientProviderStrategy' \
-            > src/test/resources/testcontainers.properties
-          ./gradlew integrationTest --no-daemon
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/docker.sock
+        run: ./gradlew test integrationTest --no-daemon
 
       - name: Publish test report
         uses: actions/upload-artifact@v4
