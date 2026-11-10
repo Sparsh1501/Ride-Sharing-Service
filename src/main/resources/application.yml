@@ -1,0 +1,86 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: dispatch-engine
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:dispatch}
+    username: ${POSTGRES_USER:dispatch}
+    password: ${POSTGRES_PASSWORD:dispatch}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate.format_sql: false
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+
+surge:
+  service-url: ${SURGE_URL:http://localhost:8080}
+  geohash-precision: 5
+  recalculation-interval-seconds: 60
+  max-multiplier: 3.0
+  min-ratio-for-surge: 1.5
+
+dispatch:
+  node-id: ${HOSTNAME:dispatch-1}
+  matching:
+    initial-radius-km: 5
+    expanded-radius-km: 10
+    max-candidates: 20
+    offer-timeout-seconds: 15
+    lock-ttl-seconds: 20
+  consistent-hash:
+    virtual-nodes: 150
+    ring-key: "dispatch:hash:ring"
+
+eta:
+  recalculation-interval-seconds: 30
+  road-factor-normal: 1.4
+  road-factor-busy: 1.7
+  road-factor-highway: 1.2
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:dispatch-engine-dev-secret-key-please-change-1234567890}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      surge-service:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      service: dispatch-engine
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

@@ -51,99 +51,25 @@ services:
     volumes:
       - redisdata:/data
 
-  # ---------------------------------------------------------------- services
-  api-gateway:
-    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: api-gateway } }
-    container_name: api-gateway
-    depends_on: [ride-request-service, dispatch-service, driver-location-service, trip-service, surge-pricing-service, notification-service, query-service]
+  # ---------------------------------------------------------------- application
+  dispatch-engine:
+    build: { context: ., dockerfile: Dockerfile }
+    container_name: dispatch-engine
+    depends_on:
+      kafka: { condition: service_started }
+      redis: { condition: service_started }
+      postgres: { condition: service_healthy }
     ports: ["8080:8080"]
     environment:
-      RIDE_REQUEST_URL: http://ride-request-service:8081
-      DISPATCH_URL: http://dispatch-service:8082
-      DRIVER_LOCATION_URL: http://driver-location-service:8083
-      TRIP_URL: http://trip-service:8084
-      SURGE_URL: http://surge-pricing-service:8085
-      NOTIFICATION_URL: http://notification-service:8086
-      QUERY_URL: http://query-service:8087
-
-  ride-request-service:
-    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: ride-request-service } }
-    container_name: ride-request-service
-    depends_on: [kafka]
-    ports: ["${RIDE_REQUEST_PORT:-8081}:8081"]
-    environment:
-      KAFKA_BOOTSTRAP: kafka:29092
-      SURGE_URL: http://surge-pricing-service:8085
-
-  dispatch-service:
-    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: dispatch-service } }
-    container_name: dispatch-service
-    depends_on: [kafka, redis]
-    ports: ["8082:8082"]
-    environment:
-      KAFKA_BOOTSTRAP: kafka:29092
-      REDIS_HOST: redis
-      HOSTNAME: dispatch-1
-
-  driver-location-service:
-    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: driver-location-service } }
-    container_name: driver-location-service
-    depends_on: [kafka, redis]
-    ports: ["8083:8083"]
-    environment:
-      KAFKA_BOOTSTRAP: kafka:29092
-      REDIS_HOST: redis
-
-  trip-service:
-    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: trip-service } }
-    container_name: trip-service
-    depends_on:
-      kafka: { condition: service_started }
-      redis: { condition: service_started }
-      postgres: { condition: service_healthy }
-    ports: ["8084:8084"]
-    environment:
       KAFKA_BOOTSTRAP: kafka:29092
       REDIS_HOST: redis
       POSTGRES_HOST: postgres
       POSTGRES_DB: ${POSTGRES_DB:-dispatch}
       POSTGRES_USER: ${POSTGRES_USER:-dispatch}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dispatch}
-
-  surge-pricing-service:
-    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: surge-pricing-service } }
-    container_name: surge-pricing-service
-    depends_on: [kafka, redis]
-    ports: ["8085:8085"]
-    environment:
-      KAFKA_BOOTSTRAP: kafka:29092
-      REDIS_HOST: redis
-
-  notification-service:
-    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: notification-service } }
-    container_name: notification-service
-    depends_on: [kafka, redis]
-    ports: ["8086:8086"]
-    environment:
-      KAFKA_BOOTSTRAP: kafka:29092
-      REDIS_HOST: redis
       JWT_SECRET: ${JWT_SECRET:-dispatch-engine-dev-secret-key-please-change-1234567890}
-
-  query-service:
-    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: query-service } }
-    container_name: query-service
-    depends_on:
-      kafka: { condition: service_started }
-      redis: { condition: service_started }
-      postgres: { condition: service_healthy }
-    ports: ["8087:8087"]
-    environment:
-      KAFKA_BOOTSTRAP: kafka:29092
-      REDIS_HOST: redis
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_DB:-dispatch}
-      POSTGRES_USER: ${POSTGRES_USER:-dispatch}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dispatch}
+      SURGE_URL: http://localhost:8080
+      HOSTNAME: dispatch-1
 
   # ---------------------------------------------------------------- observability
   prometheus:
