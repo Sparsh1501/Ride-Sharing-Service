@@ -117,7 +117,7 @@ dispatch-engine/
 
 ## Prerequisites
 
-> **New to the project?** See **[STARTUP.md](STARTUP.md)** for step-by-step local setup, Docker infra, and IntelliJ run instructions.
+> **New to the project?** See **[STARTUP.md](STARTUP.md)** for step-by-step local setup (`scripts/dev-infra.sh`, Docker infra, IntelliJ, and port-5432 workarounds).
 
 - JDK 17 (`java -version` → 17)
 - Docker + Docker Compose

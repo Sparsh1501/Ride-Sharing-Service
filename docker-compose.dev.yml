@@ -1,0 +1,12 @@
+# Optional overlay when local PostgreSQL already uses host port 5432 (common on macOS with Homebrew).
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d zookeeper kafka postgres redis
+#
+# Then run the JVM with POSTGRES_PORT=5433 (IntelliJ env vars or shell):
+#   POSTGRES_PORT=5433 ./gradlew bootRun
+
+services:
+  postgres:
+    ports:
+      - "5433:5432"

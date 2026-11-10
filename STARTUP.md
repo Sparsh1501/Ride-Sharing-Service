@@ -44,25 +44,50 @@ cp .env.example .env
 
 ## 3. Build (no Docker required)
 
+**macOS / Linux**
+
 ```bash
 chmod +x gradlew    # once, if needed on macOS/Linux
 ./gradlew build
 ```
 
+**Windows (PowerShell or Git Bash)**
+
+```bat
+gradlew.bat build
+```
+
 Unit tests run by default; integration tests need Docker:
 
 ```bash
-./gradlew integrationTest
+./gradlew integrationTest          # macOS/Linux
+gradlew.bat integrationTest        # Windows
 ```
 
 ---
 
 ## 4. Run backing services
 
-Start infrastructure **before** the Spring Boot app:
+Start infrastructure **before** the Spring Boot app.
+
+**Helper script (recommended)**
+
+```bash
+./scripts/dev-infra.sh                  # Postgres on host 5432
+./scripts/dev-infra.sh --alt-postgres   # Postgres on host 5433 (avoids local PG conflict)
+```
+
+**Or Compose directly**
 
 ```bash
 docker compose up -d zookeeper kafka postgres redis
+```
+
+If local PostgreSQL already uses **5432**, use the dev overlay instead:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d zookeeper kafka postgres redis
+export POSTGRES_PORT=5433   # Windows: set POSTGRES_PORT=5433
 ```
 
 Wait until Postgres is healthy:
@@ -89,9 +114,9 @@ FATAL: role "dispatch" does not exist
 
 you are often hitting **local PostgreSQL**, not the Compose database.
 
-1. Check what owns 5432: `lsof -i :5432`
+1. Check what owns 5432: `lsof -i :5432` (macOS/Linux)
 2. **Option A:** Stop local Postgres while developing (e.g. `brew services stop postgresql@18`)
-3. **Option B:** Map Compose Postgres to another port (e.g. `5433:5432` in `docker-compose.yml`) and set env when running the app: `POSTGRES_PORT=5433`
+3. **Option B (recommended):** `./scripts/dev-infra.sh --alt-postgres` then run with `POSTGRES_PORT=5433` (see `docker-compose.dev.yml`)
 
 ---
 
@@ -100,7 +125,11 @@ you are often hitting **local PostgreSQL**, not the Compose database.
 ### Option A — Command line (Gradle)
 
 ```bash
-./gradlew bootRun
+./gradlew bootRun                    # macOS/Linux
+gradlew.bat bootRun                  # Windows
+
+# If infra uses docker-compose.dev.yml:
+POSTGRES_PORT=5433 ./gradlew bootRun
 ```
 
 ### Option B — IntelliJ IDEA
@@ -195,11 +224,34 @@ docker compose down
 
 ---
 
+## 10. Checklist (PR / fresh clone smoke test)
+
+Use this to confirm onboarding docs still work:
+
+- [ ] `./gradlew build` passes on **JDK 17**
+- [ ] `./scripts/dev-infra.sh` (or `--alt-postgres` if port 5432 is taken)
+- [ ] `./gradlew bootRun` (set `POSTGRES_PORT=5433` when using `--alt-postgres`)
+- [ ] `curl -s http://localhost:8080/actuator/health` → `"status":"UP"`
+- [ ] Optional: IntelliJ **`bootRun`** from `.run/`
+
+CI runs the same Gradle build on every push/PR via `.github/workflows/ci.yml`.
+
+---
+
 ## Quick reference (local dev)
+
+**Standard Postgres port**
 
 ```bash
 cp .env.example .env
-docker compose up -d zookeeper kafka postgres redis
+./scripts/dev-infra.sh
 ./gradlew bootRun
 # → http://localhost:8080/actuator/health
+```
+
+**Local Postgres already on 5432**
+
+```bash
+./scripts/dev-infra.sh --alt-postgres
+POSTGRES_PORT=5433 ./gradlew bootRun
 ```
