@@ -10,8 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.geo.Point;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
@@ -21,22 +19,50 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Integration test for the geospatial matching path against a real Redis
- * (Testcontainers). Seeds 1000 drivers and asserts nearest-first ordering and
- * the NX driver lock.
+ * instance. In CI, uses the workflow Redis service; locally, uses Testcontainers.
  */
 @Tag("integration")
-@Testcontainers
 public class DriverMatchingIntegrationTest {
 
-    @Container
-    static final RedisContainer REDIS = new RedisContainer(DockerImageName.parse("redis:7-alpine"));
+    private static RedisContainer redisContainer;
 
     static StringRedisTemplate redis;
     static DriverMatchingService matching;
 
+    /**
+     * Uses a fixed Redis host when {@code CI=true} (GitHub Actions service) or when
+     * {@code REDIS_HOST} is set (e.g. {@code docker compose up -d redis} locally).
+     */
+    private static boolean useExternalRedis() {
+        if ("true".equalsIgnoreCase(System.getenv("CI"))) {
+            return true;
+        }
+        String host = System.getenv("REDIS_HOST");
+        return host != null && !host.isBlank();
+    }
+
     @BeforeAll
     static void setup() {
-        LettuceConnectionFactory factory = new LettuceConnectionFactory(REDIS.getHost(), REDIS.getFirstMappedPort());
+        String host;
+        int port;
+        if (useExternalRedis()) {
+            host = System.getenv().getOrDefault("REDIS_HOST", "localhost");
+            port = Integer.parseInt(System.getenv().getOrDefault("REDIS_PORT", "6379"));
+        } else {
+            try {
+                redisContainer = new RedisContainer(DockerImageName.parse("redis:7-alpine"));
+                redisContainer.start();
+            } catch (IllegalStateException e) {
+                throw new IllegalStateException(
+                        "Integration tests need Docker (Docker Desktop running) or an existing Redis. "
+                                + "Alternative: docker compose up -d redis && REDIS_HOST=localhost ./gradlew integrationTest",
+                        e);
+            }
+            host = redisContainer.getHost();
+            port = redisContainer.getFirstMappedPort();
+        }
+
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(host, port);
         factory.afterPropertiesSet();
         redis = new StringRedisTemplate(factory);
         redis.afterPropertiesSet();
@@ -46,7 +72,12 @@ public class DriverMatchingIntegrationTest {
 
     @AfterAll
     static void teardown() {
-        redis.getConnectionFactory().getConnection().close();
+        if (redis != null && redis.getConnectionFactory() != null) {
+            redis.getConnectionFactory().getConnection().close();
+        }
+        if (redisContainer != null) {
+            redisContainer.stop();
+        }
     }
 
     static void seedDrivers() {
